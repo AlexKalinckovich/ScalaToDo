@@ -25,7 +25,7 @@ object Migrations {
                 )
 
                 val liquibase = new Liquibase(
-                    "db/changelog-master.xml",
+                    "db/changelog/changelog-master.xml",
                     new ClassLoaderResourceAccessor(),
                     database
                 )

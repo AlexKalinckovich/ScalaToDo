@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="2-create-enum-type" author="todo-app">
+        <sql>
+            CREATE TYPE importance_type AS ENUM ('High', 'Medium', 'Low');
+        </sql>
+        <rollback>
+            DROP TYPE importance_type;
+        </rollback>
+    </changeSet>
+
+    <changeSet id="3-add-todo-columns" author="todo-app">
+
+        <addColumn tableName="todos">
+
+            <column name="importance"
+                    type="importance_type"
+                    defaultValue="Medium">
+                <constraints nullable="false"/>
+            </column>
+            
+        </addColumn>
+
+        <addColumn tableName="todos">
+
+            <column name="deadline" type="DATE">
+                <constraints nullable="true"/>
+            </column>
+
+        </addColumn>
+
+    </changeSet>
+
+    <changeSet id="4-add-indexes" author="todo-app">
+        <createIndex indexName="idx_todos_importance" tableName="todos">
+            <column name="importance"/>
+        </createIndex>
+
+        <createIndex indexName="idx_todos_deadline" tableName="todos">
+            <column name="deadline"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>
