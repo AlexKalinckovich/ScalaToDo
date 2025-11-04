@@ -1,21 +1,28 @@
 import cats.effect.{IO, IOApp}
 import cats.syntax.semigroupk.*
 import com.comcast.ip4s.*
+import config.Config
+import db.Database
+import db.migrations.Migrations
+import error.{ErrorHandler, ErrorResponse, InvalidUuid, TodoNotFound}
 import io.circe.generic.auto.*
 import io.circe.syntax.*
+import model.{CreateTodoRequest, UpdateTodoRequest}
 import org.http4s.circe.CirceEntityCodec.*
 import org.http4s.dsl.io.*
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.implicits.*
 import org.http4s.{HttpApp, HttpRoutes}
+import repository.TodoRepositoryPostgres
+import service.TodoService
 
 import java.util.UUID
 import scala.util.Try
 
 object Main extends IOApp.Simple {
 
-    import JsonCodecs.*
-    import Validator.*
+    import codecs.JsonCodecs.*
+    import validator.Validator.*
 
     private def parseUuid(id: String): IO[UUID] = {
         IO.fromTry(

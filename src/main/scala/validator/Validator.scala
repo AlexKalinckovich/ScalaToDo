@@ -1,6 +1,11 @@
-import cats.data.ValidatedNel
+package validator
+
+import cats.data.{NonEmptyList, Validated, ValidatedNel}
 import cats.effect.IO
+import cats.implicits.*
 import cats.syntax.validated.catsSyntaxValidatedId
+import error.ValidationErrors
+import model.{CreateTodoRequest, UpdateTodoRequest}
 
 object Validator {
 
@@ -25,16 +30,12 @@ object Validator {
     }
 
     def validate(req: CreateTodoRequest): IO[CreateTodoRequest] = {
-        val result = validateDescription(req.description)
-            .map(_ => req)
-
+        val result = validateDescription(req.description).map(_ => req)
         lift(result)
     }
 
     def validate(req: UpdateTodoRequest): IO[UpdateTodoRequest] = {
-        val result = validateDescription(req.description)
-            .map(_ => req) 
-
-        lift(result)
+        val result = req.description.traverse_(validateDescription)
+        lift(result.map(_ => req))
     }
 }

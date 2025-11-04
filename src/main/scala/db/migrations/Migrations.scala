@@ -1,10 +1,13 @@
+package db.migrations
+
 import cats.effect.IO
-import java.sql.DriverManager
-import liquibase.Liquibase
+import config.DbConfig
+import liquibase.{Contexts, Liquibase}
 import liquibase.database.DatabaseFactory
 import liquibase.database.jvm.JdbcConnection
 import liquibase.resource.ClassLoaderResourceAccessor
-import liquibase.Contexts
+
+import java.sql.DriverManager
 
 object Migrations {
 
