@@ -21,7 +21,6 @@ import scala.util.Try
 
 object Main extends IOApp.Simple {
 
-    import codecs.JsonCodecs.*
     import validator.Validator.*
 
     private def parseUuid(id: String): IO[UUID] = {
