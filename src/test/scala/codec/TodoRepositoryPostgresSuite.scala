@@ -13,14 +13,15 @@ import repository.TodoRepositoryPostgres
 
 import java.time.{Instant, LocalDate}
 import java.util.UUID
+import scala.compiletime.uninitialized
 
 class TodoRepositoryPostgresSuite extends CatsEffectSuite with TestContainerForAll {
 
     override val containerDef: PostgreSQLContainer.Def =
         PostgreSQLContainer.Def(dockerImageName = "postgres:16-alpine")
 
-    private var transactor: Transactor[IO] = _
-    private var repository: TodoRepositoryPostgres = _
+    private var transactor: Transactor[IO] = uninitialized
+    private var repository: TodoRepositoryPostgres = uninitialized
     private var finalizer: IO[Unit] = IO.unit
 
     override def beforeAll(): Unit = {
