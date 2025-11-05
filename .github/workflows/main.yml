@@ -7,10 +7,10 @@ on:
     branches: [ master, main ]
 
 env:
-  DB_URL: ${{ secrets.DB_URL }}
-  DB_USER: ${{ secrets.DB_USER }}
-  DB_PASS: ${{ secrets.DB_PASS }}
-  HTTP_PORT: ${{ secrets.HTTP_PORT }}
+  DB_URL: ${{ secrets.DB_URL || 'jdbc:postgresql://localhost:5432/testdb' }}
+  DB_USER: ${{ secrets.DB_USER || 'postgres' }}
+  DB_PASS: ${{ secrets.DB_PASS || 'postgres' }}
+  HTTP_PORT: ${{ secrets.HTTP_PORT || '8080' }}
 
 jobs:
   test:
@@ -48,6 +48,9 @@ jobs:
           curl -L "https://github.com/sbt/sbt/releases/download/v1.9.7/sbt-1.9.7.tgz" | tar xfz - -C /opt/
           echo "/opt/sbt/bin" >> $GITHUB_PATH
 
+      - name: Verify SBT installation
+        run: sbt --version
+
       - name: Cache SBT
         uses: actions/cache@v4
         with:
@@ -60,6 +63,27 @@ jobs:
             ${{ runner.os }}-sbt-${{ hashFiles('**/build.sbt') }}
             ${{ runner.os }}-sbt
 
+      - name: Wait for PostgreSQL
+        run: |
+          for i in {1..10}; do
+            if pg_isready -h localhost -p 5432 -U postgres; then
+              echo "PostgreSQL is ready!"
+              exit 0
+            fi
+            echo "Waiting for PostgreSQL... attempt $i"
+            sleep 3
+          done
+          echo "PostgreSQL failed to start"
+          exit 1
+
+      - name: Debug project structure
+        run: |
+          echo "=== Project structure ==="
+          find . -name "*.scala" -type f | sort
+          echo "=== Database.scala location ==="
+          find . -name "Database.scala" -type f
+          echo "=== build.sbt content ==="
+          cat build.sbt
       - name: Run tests
         run: sbt test
 
