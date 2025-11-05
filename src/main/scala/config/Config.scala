@@ -1,3 +1,5 @@
+package config
+
 import cats.effect.IO
 import ciris.*
 import ciris.http4s.*

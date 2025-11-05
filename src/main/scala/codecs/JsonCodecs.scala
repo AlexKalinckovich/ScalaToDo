@@ -1,9 +1,12 @@
-import io.circe.{Decoder, Encoder}
-import io.circe.generic.semiauto.*
+package codecs
 
+import io.circe.{Encoder, Decoder}
+import io.circe.generic.semiauto.*
 import java.util.UUID
 import java.time.{Instant, LocalDate}
-import scala.util.Try 
+import java.time.format.DateTimeParseException
+import scala.util.Try
+import model.{CreateTodoRequest, Importance, UpdateTodoRequest, TodoResponse}
 
 object JsonCodecs {
 
@@ -14,10 +17,22 @@ object JsonCodecs {
     implicit val instantDecoder: Decoder[Instant] = Decoder.decodeString.map(Instant.parse)
 
     implicit val localDateEncoder: Encoder[LocalDate] = Encoder.encodeString.contramap[LocalDate](_.toString)
-    implicit val localDateDecoder: Decoder[LocalDate] = Decoder.decodeString.map(LocalDate.parse)
+
+    implicit val localDateDecoder: Decoder[LocalDate] = Decoder.decodeString.emap { s =>
+        Try(LocalDate.parse(s)).toEither.left.map {
+            case _: DateTimeParseException => s"Invalid date format for '$s'. Expected format: YYYY-MM-DD"
+            case e => s"Invalid date: ${e.getMessage}"
+        }
+    }
 
     implicit val importanceEncoder: Encoder[Importance] = Encoder.encodeString.contramap[Importance](_.toString)
-    implicit val importanceDecoder: Decoder[Importance] = Decoder.decodeString.emapTry(s => Try(Importance.valueOf(s)))
+
+    implicit val importanceDecoder: Decoder[Importance] = Decoder.decodeString.emap { s =>
+        Try(Importance.valueOf(s)).toEither.left.map { _ =>
+            val validValues = Importance.values.map(_.toString).mkString(", ")
+            s"Invalid value '$s' for importance. Valid values are: $validValues"
+        }
+    }
 
     implicit val createTodoRequestDecoder: Decoder[CreateTodoRequest] = deriveDecoder
     implicit val updateTodoRequestDecoder: Decoder[UpdateTodoRequest] = deriveDecoder

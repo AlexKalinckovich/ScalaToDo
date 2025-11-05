@@ -1,4 +1,7 @@
+package error
+
 import cats.data.NonEmptyList
+
 import java.util.UUID
 
 sealed trait AppError extends Throwable
