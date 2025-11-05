@@ -1,4 +1,4 @@
-FROM openjdk:21-jdk-slim
+FROM eclipse-temurin:21-jdk-jammy
 
 RUN apt-get update && \
     apt-get install -y curl bash && \
@@ -9,6 +9,9 @@ WORKDIR /app
 
 COPY build.sbt /app/
 COPY project /app/project
+
+RUN sbt update
+
 COPY src /app/src
 
 RUN sbt compile
