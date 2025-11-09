@@ -2,8 +2,9 @@ package service
 
 import cats.effect.IO
 import repository.TodoRepository
-import model.{CreateTodoRequest, Todo, UpdateTodoRequest, Importance, TodoResponse}
+import model.{CreateTodoRequest, Importance, PatchTodoRequest, Todo, TodoResponse, UpdateTodoRequest}
 
+import java.time.Instant
 import java.util.UUID
 
 class TodoService(repository: TodoRepository) {
@@ -17,7 +18,7 @@ class TodoService(repository: TodoRepository) {
     def createTodo(request: CreateTodoRequest): IO[TodoResponse] =
         repository.create(request).map(toResponse)
 
-    def updateTodo(id: UUID, request: UpdateTodoRequest): IO[Option[TodoResponse]] = {
+    def patchTodo(id: UUID, request: PatchTodoRequest): IO[Option[TodoResponse]] = {
         repository.findById(id).flatMap {
             case None =>
                 IO.pure(None)
@@ -27,10 +28,26 @@ class TodoService(repository: TodoRepository) {
         }
     }
 
+    def updateTodo(id: UUID, request: UpdateTodoRequest): IO[Option[TodoResponse]] = {
+        repository.findById(id).flatMap {
+            case None =>
+                IO.pure(None)
+            case Some(existingTodo) =>
+                val updatedTodo = existingTodo.copy(
+                    description = request.description,
+                    completed = request.completed,
+                    importance = request.importance,
+                    deadline = Some(request.deadline),
+                    updatedAt = Instant.now()
+                )
+                repository.update(updatedTodo).map(_.map(toResponse))
+        }
+    }
+    
     def deleteTodo(id: UUID): IO[Boolean] =
         repository.delete(id)
 
-    private def patch(existing: Todo, request: UpdateTodoRequest): Todo = {
+    private def patch(existing: Todo, request: PatchTodoRequest): Todo = {
         existing.copy(
             description = request.description.getOrElse(existing.description),
             completed = request.completed.getOrElse(existing.completed),

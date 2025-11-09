@@ -18,6 +18,7 @@ trait TodoRepository {
     def findById(id: UUID): IO[Option[Todo]]
     def create(request: CreateTodoRequest): IO[Todo]
     def update(todo: Todo): IO[Option[Todo]]
+    def update(id: UUID, request: UpdateTodoRequest): IO[Option[Todo]]
     def delete(id: UUID): IO[Boolean]
 }
 
@@ -77,6 +78,28 @@ class TodoRepositoryPostgres(xa: Transactor[IO]) extends TodoRepository {
             .flatMap { rowsUpdated =>
                 if (rowsUpdated > 0) {
                     findById(todo.id)
+                } else {
+                    IO.pure(None)
+                }
+            }
+    }
+
+    override def update(id: UUID, request: UpdateTodoRequest): IO[Option[Todo]] = {
+        val now = Instant.now()
+        sql"""
+        UPDATE todos
+        SET
+            description = ${request.description},
+            completed = ${request.completed},
+            importance = ${request.importance},
+            deadline = ${request.deadline},
+            updated_at = $now
+        WHERE id = $id
+      """.update.run
+            .transact(xa)
+            .flatMap { rowsUpdated =>
+                if (rowsUpdated > 0) {
+                    findById(id)
                 } else {
                     IO.pure(None)
                 }

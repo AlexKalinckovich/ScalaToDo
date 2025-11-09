@@ -5,9 +5,9 @@ import config.Config
 import db.Database
 import db.migrations.Migrations
 import error.{ErrorHandler, ErrorResponse, InvalidUuid, TodoNotFound}
-import io.circe.generic.auto.*
+import codecs.JsonCodecs.given
 import io.circe.syntax.*
-import model.{CreateTodoRequest, UpdateTodoRequest}
+import model.{CreateTodoRequest, PatchTodoRequest, UpdateTodoRequest}
 import org.http4s.circe.CirceEntityCodec.*
 import org.http4s.dsl.io.*
 import org.http4s.ember.server.EmberServerBuilder
@@ -67,6 +67,16 @@ object Main extends IOApp.Simple {
                     updateReq <- req.as[UpdateTodoRequest]
                     _ <- validate(updateReq)
                     todoOpt <- todoService.updateTodo(uuid, updateReq)
+                    todo <- IO.fromOption(todoOpt)(TodoNotFound(uuid))
+                    resp <- Ok(todo.asJson)
+                } yield resp
+                
+            case req @ PATCH -> Root / "todos" / id =>
+                for {
+                    uuid <- parseUuid(id)
+                    patchReq <- req.as[PatchTodoRequest]
+                    _ <- validate(patchReq)
+                    todoOpt <- todoService.patchTodo(uuid, patchReq)
                     todo <- IO.fromOption(todoOpt)(TodoNotFound(uuid))
                     resp <- Ok(todo.asJson)
                 } yield resp

@@ -14,6 +14,7 @@ target/
 out/
 !**/src/main/**/out/
 !**/src/test/**/out/
+*.xml
 
 ### Eclipse ###
 .apt_generated
@@ -46,3 +47,6 @@ build/
 ### Scala ###
 .bsp/
 /.idea/
+/project/
+/target/
+/.env

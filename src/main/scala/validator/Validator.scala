@@ -5,7 +5,7 @@ import cats.effect.IO
 import cats.implicits.*
 import cats.syntax.validated.catsSyntaxValidatedId
 import error.ValidationErrors
-import model.{CreateTodoRequest, UpdateTodoRequest}
+import model.{CreateTodoRequest, UpdateTodoRequest, PatchTodoRequest}
 
 object Validator {
 
@@ -35,6 +35,11 @@ object Validator {
     }
 
     def validate(req: UpdateTodoRequest): IO[UpdateTodoRequest] = {
+        val result = validateDescription(req.description).map(_ => req)
+        lift(result)
+    }
+
+    def validate(req: PatchTodoRequest): IO[PatchTodoRequest] = {
         val result = req.description.traverse_(validateDescription)
         lift(result.map(_ => req))
     }
