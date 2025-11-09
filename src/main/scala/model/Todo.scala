@@ -23,11 +23,18 @@ case class CreateTodoRequest(
                                 deadline:    Option[LocalDate]
                             )
 
-case class UpdateTodoRequest(
+case class PatchTodoRequest(
                                 description: Option[String],
                                 completed:   Option[Boolean],
                                 importance:  Option[Importance],
                                 deadline:    Option[LocalDate]
+                            )
+
+case class UpdateTodoRequest(
+                                description: String,
+                                completed: Boolean,
+                                importance: Importance,
+                                deadline: LocalDate
                             )
 
 case class TodoResponse(
