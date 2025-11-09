@@ -102,11 +102,11 @@ class TodoServiceSuite extends CatsEffectSuite with MockitoSugar {
         val mockRepo = mock[TodoRepository]
         val todoService = new TodoService(mockRepo)
 
-        val updateRequest = UpdateTodoRequest(description = Some("New"), None, None, None)
+        val patchRequest = PatchTodoRequest(description = Some("New"), None, None, None)
 
         when(mockRepo.findById(testId)).thenReturn(IO.pure(None))
 
-        todoService.updateTodo(testId, updateRequest).assertEquals(None)
+        todoService.patchTodo(testId, patchRequest).assertEquals(None)
     }
 
     test("updateTodo should correctly patch fields and return updated todo") {
@@ -123,7 +123,7 @@ class TodoServiceSuite extends CatsEffectSuite with MockitoSugar {
             deadline = None
         )
 
-        val updateRequest = UpdateTodoRequest(
+        val patchRequest = PatchTodoRequest(
             description = Some("New description"),
             completed = Some(true),
             importance = None,
@@ -148,6 +148,6 @@ class TodoServiceSuite extends CatsEffectSuite with MockitoSugar {
         when(mockRepo.findById(testId)).thenReturn(IO.pure(Some(existingTodo)))
         when(mockRepo.update(patchedTodo)).thenReturn(IO.pure(Some(patchedTodo)))
 
-        todoService.updateTodo(testId, updateRequest).assertEquals(Some(expectedResponse))
+        todoService.patchTodo(testId, patchRequest).assertEquals(Some(expectedResponse))
     }
 }
