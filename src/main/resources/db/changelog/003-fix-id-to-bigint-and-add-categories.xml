@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="1-create-categories-table" author="todo-app">
+        <createTable tableName="categories">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+
+            <column name="color" type="VARCHAR(7)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="2-create-categories-indexes" author="todo-app">
+        <createIndex tableName="categories" indexName="idx_categories_name">
+            <column name="name"/>
+        </createIndex>
+
+        <createIndex tableName="categories" indexName="idx_categories_color">
+            <column name="color"/>
+        </createIndex>
+
+        <createIndex tableName="categories" indexName="idx_categories_created_at">
+            <column name="created_at"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="3-convert-todos-id-to-bigint" author="todo-app">
+        <addColumn tableName="todos">
+            <column name="new_id" type="BIGINT" autoIncrement="true">
+                <constraints nullable="false" unique="true"/>
+            </column>
+        </addColumn>
+
+        <dropPrimaryKey constraintName="todos_pkey" tableName="todos"/>
+
+        <addPrimaryKey columnNames="new_id" constraintName="todos_pkey" tableName="todos"/>
+
+        <dropColumn tableName="todos" columnName="id"/>
+
+        <renameColumn tableName="todos" oldColumnName="new_id" newColumnName="id" columnDataType="BIGINT"/>
+    </changeSet>
+
+    <changeSet id="4-add-category-to-todos" author="todo-app">
+        <addColumn tableName="todos">
+            <column name="category_id" type="BIGINT">
+                <constraints nullable="true"
+                             foreignKeyName="fk_todos_category_id"
+                             references="categories(id)"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="5-create-category-id-index" author="todo-app">
+        <createIndex tableName="todos" indexName="idx_todos_category_id">
+            <column name="category_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>
