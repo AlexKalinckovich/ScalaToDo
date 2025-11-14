@@ -1,13 +1,12 @@
 package repository
 
+import cats.data.NonEmptyList
 import cats.effect.IO
-import cats.implicits._
 import doobie.implicits.*
-import doobie.{Transactor, Fragments}
 import doobie.postgres.implicits.*
-import model.{Category, CategoryCreateRequest, CategoryUpdateRequest, CategoryPatchRequest}
+import doobie.{Fragments, Transactor}
 import mappings.CategoryMappings.given
-import mappings.DoobieMappings.given
+import model.{Category, CategoryCreateRequest}
 
 import java.time.Instant
 
@@ -41,10 +40,15 @@ class CategoryRepositoryPostgres(xa: Transactor[IO]) extends CategoryRepository 
     override def findByIds(ids: List[Long]): IO[List[Category]] = {
         if (ids.isEmpty) IO.pure(List.empty)
         else {
-            (baseColumns ++ fr"FROM categories WHERE id IN ($ids)")
-                .query[Category]
-                .to[List]
-                .transact(xa)
+            NonEmptyList.fromList(ids) match {
+                case Some(nel) =>
+                    val inClause = Fragments.in(fr"id", nel)
+                    (baseColumns ++ fr"FROM categories WHERE" ++ inClause)
+                        .query[Category]
+                        .to[List]
+                        .transact(xa)
+                case None => IO.pure(List.empty)
+            }
         }
     }
 
