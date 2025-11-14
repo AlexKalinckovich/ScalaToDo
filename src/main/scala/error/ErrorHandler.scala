@@ -34,10 +34,7 @@ object ErrorHandler {
 
             case TodoNotFound(id) =>
                 Kleisli.liftF(NotFound(ErrorResponse(s"Todo with id $id not found")))
-
-            case InvalidUuid(raw) =>
-                Kleisli.liftF(BadRequest(ErrorResponse(s"Invalid UUID: $raw")))
-
+                
             case e: InvalidMessageBodyFailure =>
                 e.cause match {
                     case Some(df: DecodingFailure) =>

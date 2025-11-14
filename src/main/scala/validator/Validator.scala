@@ -24,8 +24,8 @@ object Validator {
 
     private def lift[A](result: ValidationResult[A]): IO[A] = {
         result.toEither.fold(
-            errors => IO.raiseError(ValidationErrors(errors)), 
-            value => IO.pure(value)                           
+            errors => IO.raiseError(ValidationErrors(errors)),
+            value => IO.pure(value)
         )
     }
 
