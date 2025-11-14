@@ -5,61 +5,57 @@ import doobie.implicits.*
 import doobie.postgres.implicits.*
 import doobie.{Meta, Transactor}
 import model.{CreateTodoRequest, Importance, Todo, UpdateTodoRequest}
+import mappings.DoobieMappings.given
+import mappings.TodoMappings.given
+import mappings.CategoryMappings.given
 
 import java.time.Instant
-import java.util.UUID
-
-implicit val importanceMeta: Meta[Importance] =
-    pgEnumString("importance_type", Importance.valueOf, _.toString)
-
 
 trait TodoRepository {
     def findAll(): IO[List[Todo]]
-    def findById(id: UUID): IO[Option[Todo]]
+    def findById(id: Long): IO[Option[Todo]]
     def create(request: CreateTodoRequest): IO[Todo]
     def update(todo: Todo): IO[Option[Todo]]
-    def update(id: UUID, request: UpdateTodoRequest): IO[Option[Todo]]
-    def delete(id: UUID): IO[Boolean]
+    def delete(id: Long): IO[Boolean]
 }
-
 
 class TodoRepositoryPostgres(xa: Transactor[IO]) extends TodoRepository {
 
-    private val allColumns = fr"SELECT id, description, completed, created_at, updated_at, importance, deadline"
+    private val baseColumns = fr"SELECT t.id, t.description, t.completed, t.created_at, t.updated_at, t.importance, t.deadline, t.category_id"
+
+    private val joinedColumns = fr"SELECT t.id, t.description, t.completed, t.created_at, t.updated_at, t.importance, t.deadline, t.category_id, c.id, c.name, c.color, c.created_at, c.updated_at"
 
     override def findAll(): IO[List[Todo]] = {
-        (allColumns ++ fr"FROM todos")
+        (baseColumns ++ fr"FROM todos t")
             .query[Todo]
             .to[List]
             .transact(xa)
     }
 
-    override def findById(id: UUID): IO[Option[Todo]] = {
-        (allColumns ++ fr"FROM todos WHERE id = $id")
+    override def findById(id: Long): IO[Option[Todo]] = {
+        (baseColumns ++ fr"FROM todos t WHERE t.id = $id")
             .query[Todo]
             .option
             .transact(xa)
     }
 
     override def create(request: CreateTodoRequest): IO[Todo] = {
-        val id = UUID.randomUUID()
         val now = Instant.now()
         sql"""
-          INSERT INTO todos (id, description, completed, created_at, updated_at, importance, deadline)
+          INSERT INTO todos (description, completed, created_at, updated_at, importance, deadline, category_id)
           VALUES (
-            $id, 
             ${request.description}, 
             false, 
             $now, 
             $now, 
             ${request.importance}, 
-            ${request.deadline}
+            ${request.deadline},
+            ${request.categoryId}
           )
         """.update
-            .withUniqueGeneratedKeys[Todo](
-                "id", "description", "completed", "created_at", "updated_at", "importance", "deadline"
-            )
+            .withUniqueGeneratedKeys[Long]("id")
             .transact(xa)
+            .flatMap(id => findById(id).map(_.get))
     }
 
     override def update(todo: Todo): IO[Option[Todo]] = {
@@ -71,6 +67,7 @@ class TodoRepositoryPostgres(xa: Transactor[IO]) extends TodoRepository {
               completed = ${todo.completed}, 
               importance = ${todo.importance},
               deadline = ${todo.deadline},
+              category_id = ${todo.categoryId},
               updated_at = $now
           WHERE id = ${todo.id}
         """.update.run
@@ -84,29 +81,7 @@ class TodoRepositoryPostgres(xa: Transactor[IO]) extends TodoRepository {
             }
     }
 
-    override def update(id: UUID, request: UpdateTodoRequest): IO[Option[Todo]] = {
-        val now = Instant.now()
-        sql"""
-        UPDATE todos
-        SET
-            description = ${request.description},
-            completed = ${request.completed},
-            importance = ${request.importance},
-            deadline = ${request.deadline},
-            updated_at = $now
-        WHERE id = $id
-      """.update.run
-            .transact(xa)
-            .flatMap { rowsUpdated =>
-                if (rowsUpdated > 0) {
-                    findById(id)
-                } else {
-                    IO.pure(None)
-                }
-            }
-    }
-
-    override def delete(id: UUID): IO[Boolean] = {
+    override def delete(id: Long): IO[Boolean] = {
         sql"DELETE FROM todos WHERE id = $id"
             .update.run
             .transact(xa)

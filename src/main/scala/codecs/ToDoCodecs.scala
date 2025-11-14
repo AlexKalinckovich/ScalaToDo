@@ -3,17 +3,17 @@ package codecs
 import error.ErrorResponse
 import io.circe.{Decoder, Encoder}
 import io.circe.generic.semiauto.*
-
-import java.util.UUID
 import java.time.{Instant, LocalDate}
 import java.time.format.DateTimeParseException
 import scala.util.Try
 import model.{CreateTodoRequest, Importance, TodoResponse, UpdateTodoRequest, PatchTodoRequest}
+import codecs.CategoryCodecs.given 
 
-object JsonCodecs {
 
-    given uuidEncoder: Encoder[UUID] = Encoder.encodeString.contramap[UUID](_.toString)
-    given uuidDecoder: Decoder[UUID] = Decoder.decodeString.map(UUID.fromString)
+object ToDoCodecs {
+
+    given longEncoder: Encoder[Long] = Encoder.encodeLong
+    given longDecoder: Decoder[Long] = Decoder.decodeLong
 
     given instantEncoder: Encoder[Instant] = Encoder.encodeString.contramap[Instant](_.toString)
     given instantDecoder: Decoder[Instant] = Decoder.decodeString.map(Instant.parse)
@@ -40,5 +40,6 @@ object JsonCodecs {
     given updateTodoRequestDecoder: Decoder[UpdateTodoRequest] = deriveDecoder
     given patchTodoRequestDecoder: Decoder[PatchTodoRequest] = deriveDecoder
     given todoResponseEncoder: Encoder[TodoResponse] = deriveEncoder
+
     given errorResponseEncoder: Encoder[ErrorResponse] = deriveEncoder
 }

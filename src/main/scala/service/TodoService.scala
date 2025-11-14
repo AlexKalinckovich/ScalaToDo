@@ -5,20 +5,19 @@ import repository.TodoRepository
 import model.{CreateTodoRequest, Importance, PatchTodoRequest, Todo, TodoResponse, UpdateTodoRequest}
 
 import java.time.Instant
-import java.util.UUID
 
 class TodoService(repository: TodoRepository) {
 
     def getAllTodos(): IO[List[TodoResponse]] =
         repository.findAll().map(_.map(toResponse))
 
-    def getTodoById(id: UUID): IO[Option[TodoResponse]] =
+    def getTodoById(id: Long): IO[Option[TodoResponse]] =
         repository.findById(id).map(_.map(toResponse))
 
     def createTodo(request: CreateTodoRequest): IO[TodoResponse] =
         repository.create(request).map(toResponse)
 
-    def patchTodo(id: UUID, request: PatchTodoRequest): IO[Option[TodoResponse]] = {
+    def patchTodo(id: Long, request: PatchTodoRequest): IO[Option[TodoResponse]] = {
         repository.findById(id).flatMap {
             case None =>
                 IO.pure(None)
@@ -28,7 +27,7 @@ class TodoService(repository: TodoRepository) {
         }
     }
 
-    def updateTodo(id: UUID, request: UpdateTodoRequest): IO[Option[TodoResponse]] = {
+    def updateTodo(id: Long, request: UpdateTodoRequest): IO[Option[TodoResponse]] = {
         repository.findById(id).flatMap {
             case None =>
                 IO.pure(None)
@@ -37,14 +36,15 @@ class TodoService(repository: TodoRepository) {
                     description = request.description,
                     completed = request.completed,
                     importance = request.importance,
-                    deadline = Some(request.deadline),
+                    deadline = request.deadline,
+                    categoryId = request.categoryId,
                     updatedAt = Instant.now()
                 )
                 repository.update(updatedTodo).map(_.map(toResponse))
         }
     }
-    
-    def deleteTodo(id: UUID): IO[Boolean] =
+
+    def deleteTodo(id: Long): IO[Boolean] =
         repository.delete(id)
 
     private def patch(existing: Todo, request: PatchTodoRequest): Todo = {
@@ -52,7 +52,9 @@ class TodoService(repository: TodoRepository) {
             description = request.description.getOrElse(existing.description),
             completed = request.completed.getOrElse(existing.completed),
             importance = request.importance.getOrElse(existing.importance),
-            deadline = request.deadline
+            deadline = request.deadline.orElse(existing.deadline),
+            categoryId = request.categoryId.orElse(existing.categoryId),
+            updatedAt = Instant.now()
         )
     }
 
@@ -64,6 +66,7 @@ class TodoService(repository: TodoRepository) {
             createdAt = todo.createdAt,
             updatedAt = todo.updatedAt,
             importance = todo.importance,
-            deadline = todo.deadline
+            deadline = todo.deadline,
+            category = todo.category
         )
 }

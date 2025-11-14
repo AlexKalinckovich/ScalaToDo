@@ -7,4 +7,5 @@
 
     <include file="db/changelog/001-create-todos-table.xml"/>
     <include file="db/changelog/002-add-todo-importance-deadline.xml"/>
+    <include file="db/changelog/003-fix-id-to-bigint-and-add-categories.xml"/>
 </databaseChangeLog>

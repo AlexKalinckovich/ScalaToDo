@@ -1,4 +1,4 @@
-package codec
+package db
 
 import cats.effect.IO
 import com.dimafeng.testcontainers.PostgreSQLContainer
@@ -7,12 +7,11 @@ import db.Database
 import db.migrations.Migrations
 import doobie.implicits.*
 import doobie.util.transactor.Transactor
-import model.{CreateTodoRequest, Importance, Todo}
+import model.{CategoryCreateRequest, CreateTodoRequest, Importance, Todo}
 import munit.CatsEffectSuite
-import repository.TodoRepositoryPostgres
+import repository.{CategoryRepositoryPostgres, TodoRepositoryPostgres}
 
 import java.time.{Instant, LocalDate}
-import java.util.UUID
 import scala.compiletime.uninitialized
 
 class TodoRepositoryPostgresSuite extends CatsEffectSuite with TestContainerForAll {
@@ -21,7 +20,8 @@ class TodoRepositoryPostgresSuite extends CatsEffectSuite with TestContainerForA
         PostgreSQLContainer.Def(dockerImageName = "postgres:16-alpine")
 
     private var transactor: Transactor[IO] = uninitialized
-    private var repository: TodoRepositoryPostgres = uninitialized
+    private var todoRepository: TodoRepositoryPostgres = uninitialized
+    private var categoryRepository: CategoryRepositoryPostgres = uninitialized
     private var finalizer: IO[Unit] = IO.unit
 
     override def beforeAll(): Unit = {
@@ -35,15 +35,16 @@ class TodoRepositoryPostgresSuite extends CatsEffectSuite with TestContainerForA
                     pass = postgresContainer.password
                 )
 
-                val setup: IO[(Transactor[IO], TodoRepositoryPostgres)] = for {
+                val setup: IO[(Transactor[IO], TodoRepositoryPostgres, CategoryRepositoryPostgres)] = for {
                     _ <- Migrations.run(dbConfig)
                     (xa, fin) <- Database.transactor(dbConfig).allocated
                     _ <- IO { finalizer = fin }
-                } yield (xa, TodoRepositoryPostgres(xa))
+                } yield (xa, TodoRepositoryPostgres(xa), CategoryRepositoryPostgres(xa))
 
-                val (xa, repo) = setup.unsafeRunSync()
+                val (xa, todoRepo, categoryRepo) = setup.unsafeRunSync()
                 transactor = xa
-                repository = repo
+                todoRepository = todoRepo
+                categoryRepository = categoryRepo
         }
     }
 
@@ -56,29 +57,31 @@ class TodoRepositoryPostgresSuite extends CatsEffectSuite with TestContainerForA
         super.afterEach(context)
         if (transactor != null) {
             sql"DELETE FROM todos".update.run.transact(transactor).unsafeRunSync()
+            sql"DELETE FROM categories".update.run.transact(transactor).unsafeRunSync()
         }
     }
 
     test("findAll should return empty list when no todos exist") {
-        repository.findAll().assertEquals(Nil)
+        todoRepository.findAll().assertEquals(Nil)
     }
 
     test("create should insert a new todo and return it with generated id") {
         val createRequest = CreateTodoRequest(
             description = "Test todo",
             importance = Importance.Medium,
-            deadline = Some(LocalDate.of(2025, 1, 10))
+            deadline = Some(LocalDate.of(2025, 1, 10)),
+            categoryId = None
         )
 
         for {
-            created <- repository.create(createRequest)
-            all <- repository.findAll()
+            created <- todoRepository.create(createRequest)
+            all <- todoRepository.findAll()
         } yield {
             assertEquals(created.description, "Test todo")
             assertEquals(created.importance, Importance.Medium)
             assertEquals(created.deadline, Some(LocalDate.of(2025, 1, 10)))
             assertEquals(created.completed, false)
-            assert(created.id != null)
+            assert(created.id > 0)
             assert(created.createdAt != null)
             assert(created.updatedAt != null)
             assertEquals(all.length, 1)
@@ -86,12 +89,28 @@ class TodoRepositoryPostgresSuite extends CatsEffectSuite with TestContainerForA
         }
     }
 
+    test("create should insert a new todo with category") {
+        for {
+            category <- categoryRepository.create(CategoryCreateRequest("Work", "#FF0000"))
+            todo <- todoRepository.create(CreateTodoRequest(
+                description = "Work todo",
+                importance = Importance.High,
+                deadline = None,
+                categoryId = Some(category.id)
+            ))
+            foundTodo <- todoRepository.findById(todo.id)
+        } yield {
+            assertEquals(foundTodo.get.description, "Work todo")
+            assertEquals(foundTodo.get.categoryId, Some(category.id))
+        }
+    }
+
     test("findById should return Some(todo) when todo exists") {
-        val createRequest = CreateTodoRequest("Find me", Importance.High, None)
+        val createRequest = CreateTodoRequest("Find me", Importance.High, None, None)
 
         for {
-            created <- repository.create(createRequest)
-            found <- repository.findById(created.id)
+            created <- todoRepository.create(createRequest)
+            found <- todoRepository.findById(created.id)
         } yield {
             assert(found.isDefined)
             assertEquals(found.get.id, created.id)
@@ -101,22 +120,22 @@ class TodoRepositoryPostgresSuite extends CatsEffectSuite with TestContainerForA
     }
 
     test("findById should return None when todo does not exist") {
-        val nonExistentId = UUID.randomUUID()
-        repository.findById(nonExistentId).assertEquals(None)
+        val nonExistentId = -1L
+        todoRepository.findById(nonExistentId).assertEquals(None)
     }
 
     test("update should modify existing todo and return updated version") {
-        val createRequest = CreateTodoRequest("Original", Importance.Medium, None)
+        val createRequest = CreateTodoRequest("Original", Importance.Medium, None, None)
 
         for {
-            original <- repository.create(createRequest)
+            original <- todoRepository.create(createRequest)
             updatedTodo = original.copy(
                 description = "Updated",
                 completed = true,
                 importance = Importance.High
             )
-            updateResult <- repository.update(updatedTodo)
-            found <- repository.findById(original.id)
+            updateResult <- todoRepository.update(updatedTodo)
+            found <- todoRepository.findById(original.id)
         } yield {
             assert(updateResult.isDefined)
             assertEquals(updateResult.get.description, "Updated")
@@ -129,25 +148,27 @@ class TodoRepositoryPostgresSuite extends CatsEffectSuite with TestContainerForA
 
     test("update should return None when trying to update non-existent todo") {
         val nonExistentTodo = Todo(
-            id = UUID.randomUUID(),
+            id = -1L,
             description = "Doesn't exist",
             completed = false,
             createdAt = Instant.now(),
             updatedAt = Instant.now(),
             importance = Importance.Medium,
-            deadline = None
+            deadline = None,
+            categoryId = None,
+            category = None
         )
 
-        repository.update(nonExistentTodo).assertEquals(None)
+        todoRepository.update(nonExistentTodo).assertEquals(None)
     }
 
     test("delete should return true when todo is deleted") {
-        val createRequest = CreateTodoRequest("To delete", Importance.Low, None)
+        val createRequest = CreateTodoRequest("To delete", Importance.Low, None, None)
 
         for {
-            created <- repository.create(createRequest)
-            deleteResult <- repository.delete(created.id)
-            foundAfterDelete <- repository.findById(created.id)
+            created <- todoRepository.create(createRequest)
+            deleteResult <- todoRepository.delete(created.id)
+            foundAfterDelete <- todoRepository.findById(created.id)
         } yield {
             assertEquals(deleteResult, true)
             assertEquals(foundAfterDelete, None)
@@ -155,7 +176,8 @@ class TodoRepositoryPostgresSuite extends CatsEffectSuite with TestContainerForA
     }
 
     test("delete should return false when todo does not exist") {
-        val nonExistentId = UUID.randomUUID()
-        repository.delete(nonExistentId).assertEquals(false)
+        val nonExistentId = -1L
+        todoRepository.delete(nonExistentId).assertEquals(false)
     }
 }
+
