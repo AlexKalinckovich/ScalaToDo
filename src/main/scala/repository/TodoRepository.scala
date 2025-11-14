@@ -26,14 +26,14 @@ class TodoRepositoryPostgres(xa: Transactor[IO]) extends TodoRepository {
     private val joinedColumns = fr"SELECT t.id, t.description, t.completed, t.created_at, t.updated_at, t.importance, t.deadline, t.category_id, c.id, c.name, c.color, c.created_at, c.updated_at"
 
     override def findAll(): IO[List[Todo]] = {
-        (baseColumns ++ fr"FROM todos t")
+        (joinedColumns ++ fr"FROM todos t LEFT JOIN categories c ON t.category_id = c.id")
             .query[Todo]
             .to[List]
             .transact(xa)
     }
 
     override def findById(id: Long): IO[Option[Todo]] = {
-        (baseColumns ++ fr"FROM todos t WHERE t.id = $id")
+        (joinedColumns ++ fr"FROM todos t LEFT JOIN categories c ON t.category_id = c.id WHERE t.id = $id")
             .query[Todo]
             .option
             .transact(xa)

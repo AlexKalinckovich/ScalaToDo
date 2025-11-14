@@ -1,34 +1,44 @@
 package service
 
 import cats.effect.IO
-import repository.TodoRepository
+import cats.implicits._
+import repository.{TodoRepository, CategoryRepository}
 import model.{CreateTodoRequest, Importance, PatchTodoRequest, Todo, TodoResponse, UpdateTodoRequest}
 
 import java.time.Instant
 
-class TodoService(repository: TodoRepository) {
+class TodoService(todoRepository: TodoRepository, categoryRepository: CategoryRepository) {
 
     def getAllTodos(): IO[List[TodoResponse]] =
-        repository.findAll().map(_.map(toResponse))
+        for {
+            todos <- todoRepository.findAll()
+            enrichedTodos <- enrichTodosWithCategories(todos)
+        } yield enrichedTodos.map(toResponse)
 
     def getTodoById(id: Long): IO[Option[TodoResponse]] =
-        repository.findById(id).map(_.map(toResponse))
+        todoRepository.findById(id).flatMap {
+            case None => IO.pure(None)
+            case Some(todo) => enrichTodoWithCategory(todo).map(t => Some(toResponse(t)))
+        }
 
     def createTodo(request: CreateTodoRequest): IO[TodoResponse] =
-        repository.create(request).map(toResponse)
+        todoRepository.create(request).flatMap(enrichTodoWithCategory).map(toResponse)
 
     def patchTodo(id: Long, request: PatchTodoRequest): IO[Option[TodoResponse]] = {
-        repository.findById(id).flatMap {
+        todoRepository.findById(id).flatMap {
             case None =>
                 IO.pure(None)
             case Some(existingTodo) =>
                 val patchedTodo = patch(existingTodo, request)
-                repository.update(patchedTodo).map(_.map(toResponse))
+                todoRepository.update(patchedTodo).flatMap {
+                    case None => IO.pure(None)
+                    case Some(updatedTodo) => enrichTodoWithCategory(updatedTodo).map(t => Some(toResponse(t)))
+                }
         }
     }
 
     def updateTodo(id: Long, request: UpdateTodoRequest): IO[Option[TodoResponse]] = {
-        repository.findById(id).flatMap {
+        todoRepository.findById(id).flatMap {
             case None =>
                 IO.pure(None)
             case Some(existingTodo) =>
@@ -40,12 +50,15 @@ class TodoService(repository: TodoRepository) {
                     categoryId = request.categoryId,
                     updatedAt = Instant.now()
                 )
-                repository.update(updatedTodo).map(_.map(toResponse))
+                todoRepository.update(updatedTodo).flatMap {
+                    case None => IO.pure(None)
+                    case Some(updatedTodo) => enrichTodoWithCategory(updatedTodo).map(t => Some(toResponse(t)))
+                }
         }
     }
 
     def deleteTodo(id: Long): IO[Boolean] =
-        repository.delete(id)
+        todoRepository.delete(id)
 
     private def patch(existing: Todo, request: PatchTodoRequest): Todo = {
         existing.copy(
@@ -56,6 +69,35 @@ class TodoService(repository: TodoRepository) {
             categoryId = request.categoryId.orElse(existing.categoryId),
             updatedAt = Instant.now()
         )
+    }
+
+    private def enrichTodosWithCategories(todos: List[Todo]): IO[List[Todo]] = {
+        val categoryIds = todos.flatMap(_.categoryId).distinct
+        if (categoryIds.isEmpty) {
+            IO.pure(todos)
+        } else {
+            categoryRepository.findByIds(categoryIds).map { categories =>
+                val categoryMap = categories.map(c => c.id -> c).toMap
+                todos.map { todo =>
+                    todo.categoryId.flatMap(categoryMap.get) match {
+                        case Some(category) => todo.copy(category = Some(category))
+                        case None => todo
+                    }
+                }
+            }
+        }
+    }
+
+    private def enrichTodoWithCategory(todo: Todo): IO[Todo] = {
+        todo.categoryId match {
+            case Some(categoryId) =>
+                categoryRepository.findById(categoryId).map {
+                    case Some(category) => todo.copy(category = Some(category))
+                    case None => todo
+                }
+            case None =>
+                IO.pure(todo)
+        }
     }
 
     private def toResponse(todo: Todo): TodoResponse =

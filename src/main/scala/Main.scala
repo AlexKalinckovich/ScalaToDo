@@ -161,7 +161,7 @@ object Main extends IOApp.Simple {
                 val todoRepository = TodoRepositoryPostgres(xa)
                 val categoryRepository = CategoryRepositoryPostgres(xa)
 
-                val todoService = new TodoService(todoRepository)
+                val todoService = new TodoService(todoRepository,categoryRepository)
                 val categoryService = new CategoryService(categoryRepository)
 
                 val routes = createRoutes(todoService, categoryService)
