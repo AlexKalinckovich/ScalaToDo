@@ -1,6 +1,7 @@
 package db
 
 import cats.effect.IO
+import cats.implicits.*
 import com.dimafeng.testcontainers.PostgreSQLContainer
 import com.dimafeng.testcontainers.munit.TestContainerForAll
 import db.Database
@@ -86,6 +87,7 @@ class TodoRepositoryPostgresSuite extends CatsEffectSuite with TestContainerForA
             assert(created.updatedAt != null)
             assertEquals(all.length, 1)
             assertEquals(all.head.description, "Test todo")
+            assertEquals(all.head.category, None)
         }
     }
 
@@ -102,6 +104,7 @@ class TodoRepositoryPostgresSuite extends CatsEffectSuite with TestContainerForA
         } yield {
             assertEquals(foundTodo.get.description, "Work todo")
             assertEquals(foundTodo.get.categoryId, Some(category.id))
+            assertEquals(foundTodo.get.category, Some(category))
         }
     }
 
@@ -116,6 +119,7 @@ class TodoRepositoryPostgresSuite extends CatsEffectSuite with TestContainerForA
             assertEquals(found.get.id, created.id)
             assertEquals(found.get.description, "Find me")
             assertEquals(found.get.importance, Importance.High)
+            assertEquals(found.get.category, None)
         }
     }
 
@@ -143,6 +147,7 @@ class TodoRepositoryPostgresSuite extends CatsEffectSuite with TestContainerForA
             assertEquals(updateResult.get.importance, Importance.High)
             assertEquals(found, updateResult)
             assert(updateResult.get.updatedAt.isAfter(original.updatedAt))
+            assertEquals(updateResult.get.category, None)
         }
     }
 
@@ -180,4 +185,3 @@ class TodoRepositoryPostgresSuite extends CatsEffectSuite with TestContainerForA
         todoRepository.delete(nonExistentId).assertEquals(false)
     }
 }
-
