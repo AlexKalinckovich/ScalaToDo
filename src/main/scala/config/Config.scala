@@ -12,7 +12,8 @@ case class DbConfig(
                    )
 
 case class MongoConfig(
-                          uri: String
+                          uri: String,
+                          database: String = "tododb"
                       )
 
 case class AppConfig(
@@ -31,11 +32,12 @@ object Config {
             dbPass   <- env("DB_PASS").as[String]
 
             mongoUri <- env("MONGO_URI").as[String]
+            mongoDb  <- env("MONGO_DB").as[String].default("tododb")
 
             httpPort <- env("HTTP_PORT").as[Port]
         } yield AppConfig(
             DbConfig(dbUrl, dbUser, dbPass),
-            MongoConfig(mongoUri),
+            MongoConfig(mongoUri, mongoDb),
             httpPort
         )
 

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd
+        http://www.liquibase.org/xml/ns/dbchangelog-ext
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <changeSet id="1-create-categories-collection" author="todo-app">
+        <ext:createCollection collectionName="categories"/>
+    </changeSet>
+
+    <changeSet id="2-create-categories-indexes" author="todo-app">
+        <ext:runCommand command='{
+            "createIndexes": "categories",
+            "indexes": [
+                {
+                    "key": { "id": 1 },
+                    "name": "categories_id_unique_idx",
+                    "unique": true
+                }
+            ]
+        }'/>
+
+        <ext:runCommand command='{
+            "createIndexes": "categories",
+            "indexes": [
+                {
+                    "key": { "name": 1 },
+                    "name": "categories_name_idx"
+                }
+            ]
+        }'/>
+    </changeSet>
+
+</databaseChangeLog>

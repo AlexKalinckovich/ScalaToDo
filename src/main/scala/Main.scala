@@ -1,28 +1,28 @@
 import cats.effect.{IO, IOApp}
 import cats.syntax.semigroupk.*
+import codecs.CategoryCodecs.given
+import codecs.ToDoCodecs.given
 import com.comcast.ip4s.*
 import config.Config
 import db.Database
-import db.migrations.Migrations
-import error.{ErrorHandler, ErrorResponse, InvalidId, TodoNotFound, CategoryNotFound}
-import codecs.ToDoCodecs.given
-import codecs.CategoryCodecs.given
+import db.migrations.{Migrations, MongoMigrations}
+import error.{CategoryNotFound, ErrorHandler, ErrorResponse, InvalidId, TodoNotFound}
 import io.circe.syntax.*
-import model.{CreateTodoRequest, PatchTodoRequest, UpdateTodoRequest, CategoryCreateRequest, CategoryUpdateRequest, CategoryPatchRequest}
+import model.{CategoryCreateRequest, CategoryPatchRequest, CategoryUpdateRequest, CreateTodoRequest, PatchTodoRequest, UpdateTodoRequest}
 import org.http4s.circe.CirceEntityCodec.*
 import org.http4s.dsl.io.*
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.implicits.*
 import org.http4s.{HttpApp, HttpRoutes}
-import repository.{TodoRepositoryPostgres, CategoryRepositoryPostgres}
-import service.{TodoService, CategoryService}
+import repository.{CategoryRepositoryPostgres, TodoRepositoryPostgres}
+import service.{CategoryService, TodoService}
 
 import scala.util.Try
 
 object Main extends IOApp.Simple {
 
-    import validator.Validator.{validate as validateTodo, *}
-    import validator.CategoryValidator.{validate as validateCategory, *}
+    import validator.CategoryValidator.validate as validateCategory
+    import validator.Validator.validate as validateTodo
 
     private def parseLong(id: String): IO[Long] = {
         IO.fromTry(
@@ -156,6 +156,8 @@ object Main extends IOApp.Simple {
             _ = println(s"Config loaded: $config")
 
             _ <- Migrations.run(config.db)
+            
+            _ <- MongoMigrations.run(config.mongo)
 
             _ <- Database.transactor(config.db).use { xa =>
                 val todoRepository = TodoRepositoryPostgres(xa)

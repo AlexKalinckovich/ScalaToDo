@@ -36,12 +36,13 @@ object Migrations {
                 println("Running database migrations...")
                 liquibase.update(new Contexts())
                 println("Migrations run successfully.")
-
+                liquibase.close()
             } catch {
                 case e: Exception =>
                     println(s"Error running migrations: ${e.getMessage}")
                     throw e
             } finally {
+                
                 if (connection != null) {
                     connection.close()
                 }

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd
+        http://www.liquibase.org/xml/ns/dbchangelog-ext
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <changeSet id="1-create-todos-collection" author="todo-app">
+        <ext:createCollection collectionName="todos"/>
+    </changeSet>
+
+    <changeSet id="2-create-todos-indexes" author="todo-app">
+        <ext:runCommand command='{
+            "createIndexes": "todos",
+            "indexes": [
+                {
+                    "key": { "id": 1 },
+                    "name": "todos_id_unique_idx",
+                    "unique": true
+                }
+            ]
+        }'/>
+
+        <ext:runCommand command='{
+            "createIndexes": "todos",
+            "indexes": [
+                {
+                    "key": { "completed": 1 },
+                    "name": "todos_completed_idx"
+                }
+            ]
+        }'/>
+
+        <ext:runCommand command='{
+            "createIndexes": "todos",
+            "indexes": [
+                {
+                    "key": { "importance": 1 },
+                    "name": "todos_importance_idx"
+                }
+            ]
+        }'/>
+
+        <ext:runCommand command='{
+            "createIndexes": "todos",
+            "indexes": [
+                {
+                    "key": { "categoryId": 1 },
+                    "name": "todos_category_id_idx"
+                }
+            ]
+        }'/>
+    </changeSet>
+
+</databaseChangeLog>

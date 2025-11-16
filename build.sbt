@@ -11,6 +11,9 @@ val Http4sVersion = "0.23.33"
 val CirisVersion = "3.11.1"
 val LiquibaseVersion = "5.0.1"
 val PostgresVersion = "42.7.8"
+
+val LiquibaseMongoVersion = "5.0.1"
+
 val LogbackVersion = "1.5.20"
 val CirceVersion = "0.14.15"
 val DoobieVersion = "1.0.0-RC11"
@@ -53,8 +56,13 @@ libraryDependencies ++= Seq(
         ScalaTestVersion % Test,
     "org.scalatestplus" %% "mockito-5-12" % ScalaTestPlusVersion % Test,
 
+    "org.liquibase" % "liquibase-core" % LiquibaseVersion,
+    "org.liquibase.ext" % "liquibase-mongodb" % LiquibaseMongoVersion,
+
     "com.dimafeng" %% "testcontainers-scala-munit" % TestContainersScalaVersion % Test,
     "com.dimafeng" %% "testcontainers-scala-postgresql" % TestContainersScalaVersion % Test,
+
+    "org.mongodb" % "mongodb-driver-sync" % "5.6.1",
 
     "org.testcontainers" % "testcontainers" % TestContainersVersion % Test,
     "org.testcontainers" % "postgresql" % TestContainersVersion % Test,
